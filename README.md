@@ -108,4 +108,4 @@ poetry run python main.py
 1. Experimento MLflow
 2. Modelo productivo
 
-#### Arquitectura 
+#### Arquitectura
