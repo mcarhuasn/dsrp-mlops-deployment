@@ -100,7 +100,7 @@ poetry install
 3. Ejecución pipeline ML
 
 ```bash
-poetry run python main.py --pipeline booking_cancellation
+poetry run python main.py
 ```
 
 #### Resultados ejecución pipeline ML
