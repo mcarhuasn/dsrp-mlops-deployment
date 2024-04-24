@@ -4,6 +4,7 @@ import dotenv
 import os
 from loguru import logger
 import boto3
+import pickle
 
 config = dotenv.dotenv_values(".env")
 print(config.get("MLFLOW_TRACKING_URI"))
@@ -40,7 +41,7 @@ AWS_SECRET_ACCESS_KEY = config.get("AWS_ACCESS_SECRET")
 ID_VAR = "id"
 TARGET_VAR = "loss"
 
-data = read_csv_from_s3(
+raw_data = read_csv_from_s3(
                         bucket_name = config.get("S3_BUCKET_RAW_NAME"), 
                         file_key = "raw/sample_train_v2.csv",
                         aws_access_key_id = AWS_ACCESS_KEY,
@@ -48,10 +49,25 @@ data = read_csv_from_s3(
                         )
 
 logger.info("Cleaning data input")
-data.replace("NA", 0, inplace=True)
-data.drop([ID_VAR, TARGET_VAR], axis=1)
+data = raw_data.replace("NA", 0)
+data.drop([ID_VAR, TARGET_VAR], axis=1, inplace=True)
 print(data.head())
 
 #default_model = mlflow.sklearn.load_model(model_uri=f"models:/default_prediction_dsrp_model/Production",)
 #default_model = mlflow.sklearn.load_model(model_uri=f"models:/default_prediction_dsrp_model/versions/1",)
+#default_model = mlflow.sklearn.load_model(model_uri=f"runs:/c5d12be616c54ae3b30e2b301a82a50f/default_prediction_dsrp_model",)
 #print(default_model)
+
+logger.info("Downloading the model")
+model_path = mlflow.artifacts.download_artifacts("mlflow-artifacts:/c5d12be616c54ae3b30e2b301a82a50f/95ec71c8d38c47a29d71f3be11a8a7ab/artifacts/model/model.pkl") # XGBoost pkl model file
+
+with open(model_path, "rb") as file:
+    model = pickle.load(file)
+
+logger.info("Predicting input data ... ")
+#print(model.predict(data))
+vector_predictions = model.predict(data)
+predictions = raw_data[[ID_VAR, TARGET_VAR]]
+predictions['loss_prediction'] = vector_predictions
+print(predictions.head())
+

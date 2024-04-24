@@ -3,3 +3,5 @@ mlflow
 python-dotenv
 loguru
 boto3
+xgboost
+scikit-learn
