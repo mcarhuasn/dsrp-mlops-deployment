@@ -1,0 +1,5 @@
+pandas
+mlflow
+python-dotenv
+loguru
+boto3
