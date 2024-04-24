@@ -74,25 +74,46 @@ print(data.head())
 #default_model = mlflow.sklearn.load_model(model_uri=f"models:/default_prediction_dsrp_model/versions/1",)
 #default_model = mlflow.sklearn.load_model(model_uri=f"runs:/c5d12be616c54ae3b30e2b301a82a50f/default_prediction_dsrp_model",)
 #print(default_model)
+mlflow.set_registry_uri(config.get("MLFLOW_TRACKING_URI"))
+model_name = "default_prediction_dsrp_model"
+alias = "dsrp-champion"
 
-logger.info("Downloading the model")
-model_path = mlflow.artifacts.download_artifacts("mlflow-artifacts:/c5d12be616c54ae3b30e2b301a82a50f/95ec71c8d38c47a29d71f3be11a8a7ab/artifacts/model/model.pkl") # XGBoost pkl model file
+logger.info(f"Downloading the Champion model {model_name}@{alias}") 
+#model_path = mlflow.artifacts.download_artifacts("mlflow-artifacts:/c5d12be616c54ae3b30e2b301a82a50f/95ec71c8d38c47a29d71f3be11a8a7ab/artifacts/model/model.pkl") # XGBoost pkl model file
+#with open(model_path, "rb") as file:
+#    model = pickle.load(file)
+#
+champion_model = mlflow.sklearn.load_model(f"models:/{model_name}@{alias}")
 
-with open(model_path, "rb") as file:
-    model = pickle.load(file)
+logger.info("Predicting input data for Champion model... ")
+champion_vector_predictions = champion_model.predict(data)
+champion_predictions = raw_data[[ID_VAR, TARGET_VAR]]
+champion_predictions['loss_prediction'] = champion_vector_predictions
+print(champion_predictions.head())
 
-logger.info("Predicting input data ... ")
-#print(model.predict(data))
-vector_predictions = model.predict(data)
-predictions = raw_data[[ID_VAR, TARGET_VAR]]
-predictions['loss_prediction'] = vector_predictions
-print(predictions.head())
+logger.info(f"Downloading the Challenger model {model_name}")
+challenger_model = mlflow.sklearn.load_model(f"models:/{model_name}@dsrp-challenger") 
+
+logger.info("Predicting input data for Challenger model... ")
+challenger_vector_predictions = challenger_model.predict(data)
+challenger_predictions = raw_data[[ID_VAR, TARGET_VAR]]
+challenger_predictions['loss_prediction'] = challenger_vector_predictions
+print(challenger_predictions.head())
+
 
 logger.info("Uploading Predictions to S3 Bucket")
 upload_csv_to_s3(
-                dataframe=predictions,
+                dataframe = champion_predictions,
                 bucket_name = config.get("S3_BUCKET_RAW_NAME"),
-                path = "predictions/predicciones_dsrp_mcn.csv",
+                path = "predictions/champion_predicciones_dsrp_mcn.csv",
+                aws_access_key_id = AWS_ACCESS_KEY,
+                aws_secret_access_key = AWS_SECRET_ACCESS_KEY
+                )
+
+upload_csv_to_s3(
+                dataframe = challenger_predictions,
+                bucket_name = config.get("S3_BUCKET_RAW_NAME"),
+                path = "predictions/challenger_predicciones_dsrp_mcn.csv",
                 aws_access_key_id = AWS_ACCESS_KEY,
                 aws_secret_access_key = AWS_SECRET_ACCESS_KEY
                 )
